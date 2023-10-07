@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 
 @Controller
-//Controller的访问路径可省略
 public class HomeController {
 
     @Autowired
@@ -26,7 +25,6 @@ public class HomeController {
     @Autowired
     private UserService userService;
 
-    //处理请求的方法
     @RequestMapping(path = "/index", method = RequestMethod.GET)
     public String getIndexPage(Model model, Page page) {
         // 方法调用钱,SpringMVC会自动实例化Model和Page,并将Page注入Model.
@@ -46,8 +44,12 @@ public class HomeController {
             }
         }
         model.addAttribute("discussPosts", discussPosts);
-        //返回的是页面路径
         return "/index";
+    }
+
+    @RequestMapping(path = "/error", method = RequestMethod.GET)
+    public String getErrorPage() {
+        return "/error/500";
     }
 
 }

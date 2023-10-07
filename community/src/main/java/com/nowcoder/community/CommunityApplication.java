@@ -6,6 +6,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.nowcoder.community.dao"})
+@ComponentScan(basePackages = {"com.nowcoder.community.util"})
 public class CommunityApplication {
 
 	public static void main(String[] args) {
