@@ -2,7 +2,10 @@ package com.nowcoder.community.controller;
 
 import com.nowcoder.community.annotation.LoginRequired;
 import com.nowcoder.community.entity.User;
+import com.nowcoder.community.service.FollowService;
+import com.nowcoder.community.service.LikeService;
 import com.nowcoder.community.service.UserService;
+import com.nowcoder.community.util.CommunityConstant;
 import com.nowcoder.community.util.CommunityUtil;
 import com.nowcoder.community.util.HostHolder;
 import org.apache.commons.lang3.StringUtils;
@@ -23,52 +26,48 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-
-//处理与用户有关的逻辑
 @Controller
 @RequestMapping("/user")
-public class UserController {
+public class UserController implements CommunityConstant {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
-    //上传路径
     @Value("${community.path.upload}")
     private String uploadPath;
 
-    //域名
     @Value("${community.path.domain}")
     private String domain;
 
-    //项目路径
     @Value("${server.servlet.context-path}")
     private String contextPath;
 
     @Autowired
     private UserService userService;
 
-    //取出当前用户
     @Autowired
     private HostHolder hostHolder;
 
-    @LoginRequired  //登陆后才能使用的方法
+    @Autowired
+    private LikeService likeService;
+
+    @Autowired
+    private FollowService followService;
+
+    @LoginRequired
     @RequestMapping(path = "/setting", method = RequestMethod.GET)
     public String getSettingPage() {
         return "/site/setting";
     }
 
-    //上传图片文件
     @LoginRequired
     @RequestMapping(path = "/upload", method = RequestMethod.POST)
-    //                        上传一个就定义一个变量，上传一堆就定义数组
     public String uploadHeader(MultipartFile headerImage, Model model) {
         if (headerImage == null) {
             model.addAttribute("error", "您还没有选择图片!");
             return "/site/setting";
         }
 
-        //原始文件名
         String fileName = headerImage.getOriginalFilename();
-        //截取文件名的后缀
         String suffix = fileName.substring(fileName.lastIndexOf("."));
         if (StringUtils.isBlank(suffix)) {
             model.addAttribute("error", "文件的格式不正确!");
@@ -96,9 +95,7 @@ public class UserController {
         return "redirect:/index";
     }
 
-    //获取头像
     @RequestMapping(path = "/header/{fileName}", method = RequestMethod.GET)
-    //   根据文件名找头像
     public void getHeader(@PathVariable("fileName") String fileName, HttpServletResponse response) {
         // 服务器存放路径
         fileName = uploadPath + "/" + fileName;
@@ -112,13 +109,42 @@ public class UserController {
         ) {
             byte[] buffer = new byte[1024];
             int b = 0;
-            //  =-1就是没读到
             while ((b = fis.read(buffer)) != -1) {
                 os.write(buffer, 0, b);
             }
         } catch (IOException e) {
             logger.error("读取头像失败: " + e.getMessage());
         }
+    }
+
+    // 个人主页
+    @RequestMapping(path = "/profile/{userId}", method = RequestMethod.GET)
+    public String getProfilePage(@PathVariable("userId") int userId, Model model) {
+        User user = userService.findUserById(userId);
+        if (user == null) {
+            throw new RuntimeException("该用户不存在!");
+        }
+
+        // 用户
+        model.addAttribute("user", user);
+        // 点赞数量
+        int likeCount = likeService.findUserLikeCount(userId);
+        model.addAttribute("likeCount", likeCount);
+
+        // 关注数量
+        long followeeCount = followService.findFolloweeCount(userId, ENTITY_TYPE_USER);
+        model.addAttribute("followeeCount", followeeCount);
+        // 粉丝数量
+        long followerCount = followService.findFollowerCount(ENTITY_TYPE_USER, userId);
+        model.addAttribute("followerCount", followerCount);
+        // 是否已关注
+        boolean hasFollowed = false;
+        if (hostHolder.getUser() != null) {
+            hasFollowed = followService.hasFollowed(hostHolder.getUser().getId(), ENTITY_TYPE_USER, userId);
+        }
+        model.addAttribute("hasFollowed", hasFollowed);
+
+        return "/site/profile";
     }
 
 }
